@@ -12,7 +12,8 @@ import {
   getCategorias,
   calcularUnidadesTotal,
   getConfiguracaoProduto,
-  temConfiguracaoParaCategoria
+  temConfiguracaoParaCategoria,
+  produtoPodeSerUsadoNaCategoria
 } from '../services/supabaseService';
 import AlertPersonalizado from './AlertPersonalizado';
 import { useAlert } from '../hooks/useAlert';
@@ -155,6 +156,17 @@ const NovaProducao: React.FC<NovaProducaoProps> = ({ onNavigate }) => {
     
     if (!categoria) {
       mostrarAlert('erro', 'Categoria inválida', 'Selecione uma categoria válida.');
+      return;
+    }
+
+    // Verifica se o produto pode ser usado nesta categoria
+    const podeUsar = await produtoPodeSerUsadoNaCategoria(produtoTrimmed, categoria.id);
+    if (!podeUsar) {
+      mostrarAlert(
+        'aviso', 
+        'Produto não configurado para esta categoria', 
+        `O produto "${produtoTrimmed}" não está configurado para ser produzido por "${categoria.nome}". Configure isso na aba "Quem Produz" das Configurações.`
+      );
       return;
     }
 

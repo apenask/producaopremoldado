@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Settings, Trash2, AlertCircle, Edit3, Save, X, Upload } from 'lucide-react';
+import { ArrowLeft, Plus, Settings, Trash2, AlertCircle, Edit3, Save, X, Upload, Users, Check } from 'lucide-react';
 import { TelaAtiva, ConfiguracaoProduto, CategoriaProducao } from '../types';
 import { 
   getConfiguracoes, 
@@ -10,7 +10,9 @@ import {
   adicionarProduto,
   getCategorias,
   salvarCategoria,
-  removerCategoria
+  removerCategoria,
+  getProdutosCategorias,
+  salvarProdutoCategoria
 } from '../services/supabaseService';
 import AlertPersonalizado from './AlertPersonalizado';
 import { useAlert } from '../hooks/useAlert';
@@ -37,7 +39,7 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
   const [produtosFiltrados, setProdutosFiltrados] = useState<string[]>([]);
   const [mostrarSugestoes, setMostrarSugestoes] = useState(false);
   const [produtoNovo, setProdutoNovo] = useState(false);
-  const [abaSelecionada, setAbaSelecionada] = useState<'produtos' | 'categorias' | 'lote'>('produtos');
+  const [abaSelecionada, setAbaSelecionada] = useState<'produtos' | 'categorias' | 'lote' | 'produto-categorias'>('produtos');
   const [loading, setLoading] = useState(true);
   
   // Estados para categorias
@@ -51,6 +53,13 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
     { nome: '', unidadesPorTabua: '', unidadesPorForma: '', sugestoes: [], mostrarSugestoes: false, produtoNovo: false }
   ]);
   
+  // Estados para configuração produto-categorias
+  const [produtoSelecionado, setProdutoSelecionado] = useState('');
+  const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<string[]>([]);
+  const [produtosCategorias, setProdutosCategorias] = useState<Record<string, string[]>>({});
+  const [mostrarSugestoesProdCat, setMostrarSugestoesProdCat] = useState(false);
+  const [produtosFiltradosProdCat, setProdutosFiltradosProdCat] = useState<string[]>([]);
+  
   const { alert, mostrarAlert, fecharAlert } = useAlert();
 
   useEffect(() => {
@@ -60,15 +69,17 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
   const carregarDados = async () => {
     try {
       setLoading(true);
-      const [configsData, produtosData, categoriasData] = await Promise.all([
+      const [configsData, produtosData, categoriasData, produtosCatData] = await Promise.all([
         getConfiguracoes(),
         getProdutos(),
-        getCategorias()
+        getCategorias(),
+        getProdutosCategorias()
       ]);
       
       setConfiguracoes(configsData);
       setProdutos(produtosData);
       setCategorias(categoriasData);
+      setProdutosCategorias(produtosCatData);
     } catch (error: any) {
       mostrarAlert('erro', 'Erro ao carregar dados', error.message);
     } finally {
@@ -114,6 +125,65 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
       ));
     } catch (error: any) {
       console.error('Erro ao buscar produtos:', error);
+    }
+  };
+
+  // Funções para configuração produto-categorias
+  const buscarProdutosProdCat = async (termo: string) => {
+    try {
+      const filtrados = await buscarProdutos(termo);
+      setProdutosFiltradosProdCat(filtrados);
+    } catch (error: any) {
+      console.error('Erro ao buscar produtos:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (produtoSelecionado) {
+      buscarProdutosProdCat(produtoSelecionado);
+      // Carrega categorias já selecionadas para este produto
+      const categoriasExistentes = produtosCategorias[produtoSelecionado] || [];
+      setCategoriasSelecionadas(categoriasExistentes);
+    } else {
+      setProdutosFiltradosProdCat([]);
+      setCategoriasSelecionadas([]);
+    }
+  }, [produtoSelecionado, produtosCategorias]);
+
+  const toggleCategoria = (categoriaId: string) => {
+    setCategoriasSelecionadas(prev => 
+      prev.includes(categoriaId) 
+        ? prev.filter(id => id !== categoriaId)
+        : [...prev, categoriaId]
+    );
+  };
+
+  const salvarProdutoCategoria = async () => {
+    if (!produtoSelecionado.trim()) {
+      mostrarAlert('aviso', 'Campo obrigatório', 'Selecione um produto.');
+      return;
+    }
+
+    if (categoriasSelecionadas.length === 0) {
+      mostrarAlert('aviso', 'Categoria necessária', 'Selecione pelo menos uma categoria.');
+      return;
+    }
+
+    try {
+      const produtoTrimmed = produtoSelecionado.trim().toUpperCase().replace(/\s+/g, ' ');
+      await salvarProdutoCategoria(produtoTrimmed, categoriasSelecionadas);
+      
+      // Recarrega os dados
+      const novosProdutosCat = await getProdutosCategorias();
+      setProdutosCategorias(novosProdutosCat);
+      
+      setProdutoSelecionado('');
+      setCategoriasSelecionadas([]);
+      setMostrarSugestoesProdCat(false);
+      
+      mostrarAlert('sucesso', 'Configuração salva', `Categorias configuradas para "${produtoTrimmed}".`);
+    } catch (error: any) {
+      mostrarAlert('erro', 'Erro ao salvar configuração', error.message);
     }
   };
 
@@ -379,7 +449,7 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
           <div className="flex border-b">
             <button
               onClick={() => setAbaSelecionada('produtos')}
-              className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
+              className={`flex-1 py-3 px-2 text-center font-medium transition-colors text-xs sm:text-sm ${
                 abaSelecionada === 'produtos'
                   ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50'
                   : 'text-gray-600 hover:text-purple-600'
@@ -388,18 +458,28 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
               Produtos
             </button>
             <button
+              onClick={() => setAbaSelecionada('produto-categorias')}
+              className={`flex-1 py-3 px-2 text-center font-medium transition-colors text-xs sm:text-sm ${
+                abaSelecionada === 'produto-categorias'
+                  ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50'
+                  : 'text-gray-600 hover:text-purple-600'
+              }`}
+            >
+              Quem Produz
+            </button>
+            <button
               onClick={() => setAbaSelecionada('lote')}
-              className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
+              className={`flex-1 py-3 px-2 text-center font-medium transition-colors text-xs sm:text-sm ${
                 abaSelecionada === 'lote'
                   ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50'
                   : 'text-gray-600 hover:text-purple-600'
               }`}
             >
-              Configuração em Lote
+              Lote
             </button>
             <button
               onClick={() => setAbaSelecionada('categorias')}
-              className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
+              className={`flex-1 py-3 px-2 text-center font-medium transition-colors text-xs sm:text-sm ${
                 abaSelecionada === 'categorias'
                   ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50'
                   : 'text-gray-600 hover:text-purple-600'
@@ -533,6 +613,134 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
                             <p>{config.unidadesPorForma} unidades por forma</p>
                           )}
                         </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        ) : abaSelecionada === 'produto-categorias' ? (
+          <>
+            {/* Configuração de Quem Produz */}
+            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">
+                Configurar Quem Produz Cada Produto
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-600 mb-6">
+                Defina quais categorias de produção podem fabricar cada produto. Por exemplo, um produto pode ser feito tanto pelo Rodrigo (tábuas) quanto pelos Diaristas (formas).
+              </p>
+
+              <div className="space-y-4">
+                <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Produto
+                  </label>
+                  <input
+                    type="text"
+                    value={produtoSelecionado}
+                    onChange={(e) => setProdutoSelecionado(e.target.value)}
+                    onFocus={() => setMostrarSugestoesProdCat(true)}
+                    onBlur={() => setTimeout(() => setMostrarSugestoesProdCat(false), 200)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+                    placeholder="Digite o nome do produto"
+                  />
+                  
+                  {mostrarSugestoesProdCat && produtosFiltradosProdCat.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
+                      {produtosFiltradosProdCat.map((p, index) => (
+                        <button
+                          key={index}
+                          onClick={() => {
+                            setProdutoSelecionado(p);
+                            setMostrarSugestoesProdCat(false);
+                          }}
+                          className="w-full px-4 py-2 text-left hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg text-sm"
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Categorias que podem produzir este produto
+                  </label>
+                  <div className="space-y-2">
+                    {categorias.map((categoria) => (
+                      <label
+                        key={categoria.id}
+                        className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={categoriasSelecionadas.includes(categoria.id)}
+                          onChange={() => toggleCategoria(categoria.id)}
+                          className="sr-only"
+                        />
+                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center mr-3 transition-colors ${
+                          categoriasSelecionadas.includes(categoria.id)
+                            ? 'bg-purple-600 border-purple-600'
+                            : 'border-gray-300'
+                        }`}>
+                          {categoriasSelecionadas.includes(categoria.id) && (
+                            <Check className="h-3 w-3 text-white" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <span className="font-medium text-gray-800">{categoria.nome}</span>
+                          <p className="text-sm text-gray-600">
+                            Tipo: {getTipoTexto(categoria.tipo)}
+                            {categoria.descricao && ` • ${categoria.descricao}`}
+                          </p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  onClick={salvarProdutoCategoria}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 sm:px-6 rounded-lg font-semibold flex items-center justify-center space-x-2 transition-all duration-200 text-sm sm:text-base"
+                >
+                  <Users className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span>Salvar Configuração</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Lista de Produtos e suas Categorias */}
+            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">
+                Produtos e Quem Pode Produzir
+              </h3>
+              
+              {Object.keys(produtosCategorias).length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-sm sm:text-base text-gray-500">Nenhuma configuração de categoria por produto ainda</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {Object.entries(produtosCategorias).map(([produto, categoriaIds]) => (
+                    <div key={produto} className="p-3 sm:p-4 bg-gray-50 rounded-lg">
+                      <h4 className="font-medium text-gray-800 text-sm sm:text-base mb-2">
+                        {produto}
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {categoriaIds.map(categoriaId => {
+                          const categoria = categorias.find(c => c.id === categoriaId);
+                          return categoria ? (
+                            <span
+                              key={categoriaId}
+                              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
+                            >
+                              {categoria.nome} ({getTipoTexto(categoria.tipo)})
+                            </span>
+                          ) : null;
+                        })}
                       </div>
                     </div>
                   ))}
