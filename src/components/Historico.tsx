@@ -92,9 +92,10 @@ const Historico: React.FC<HistoricoProps> = ({ onNavigate }) => {
         texto += `${nomeCategoria}:\n`;
         
         itensCategoria.forEach(item => {
-          if (categoria?.tipo === 'tabuas') {
+          const tipoItem = item.tipoMedida || 'unidades';
+          if (tipoItem === 'tabuas') {
             texto += `* ${item.produto}:\n* ${item.quantidade} tabuas = ${item.unidadesTotal} unidades\n\n`;
-          } else if (categoria?.tipo === 'formas') {
+          } else if (tipoItem === 'formas') {
             texto += `* ${item.produto}: ${item.quantidade} formas = ${item.unidadesTotal} unidades\n`;
           } else {
             texto += `* ${item.produto}: ${item.quantidade} unidades\n`;
@@ -131,12 +132,13 @@ const Historico: React.FC<HistoricoProps> = ({ onNavigate }) => {
       setItensEditando(itensEditando.map(item => {
         if (item.id === id) {
           const categoria = categorias.find(c => c.nome === item.categoria);
+          const tipoItem = item.tipoMedida || 'unidades';
           
           let unidadesTotal = novaQuantidade;
-          if (categoria?.tipo === 'tabuas' && item.unidadesTotal) {
+          if (tipoItem === 'tabuas' && item.unidadesTotal) {
             const unidadesPorTabua = Math.round(item.unidadesTotal / item.quantidade);
             unidadesTotal = novaQuantidade * unidadesPorTabua;
-          } else if (categoria?.tipo === 'formas' && item.unidadesTotal) {
+          } else if (tipoItem === 'formas' && item.unidadesTotal) {
             const unidadesPorForma = Math.round(item.unidadesTotal / item.quantidade);
             unidadesTotal = novaQuantidade * unidadesPorForma;
           }
@@ -158,10 +160,11 @@ const Historico: React.FC<HistoricoProps> = ({ onNavigate }) => {
     try {
       const categorias = await getCategorias();
       const categoria = categorias.find(c => c.nome === item.categoria);
+      const tipoItem = item.tipoMedida || 'unidades';
       
-      if (categoria?.tipo === 'tabuas') {
+      if (tipoItem === 'tabuas') {
         return `${item.quantidade} tábuas (${item.unidadesTotal} unidades)`;
-      } else if (categoria?.tipo === 'formas') {
+      } else if (tipoItem === 'formas') {
         return `${item.quantidade} formas (${item.unidadesTotal} unidades)`;
       } else {
         return `${item.quantidade} unidades`;
@@ -286,7 +289,7 @@ const Historico: React.FC<HistoricoProps> = ({ onNavigate }) => {
                             {item.produto}:
                           </span>
                           <span className="text-gray-600 ml-0 sm:ml-2 text-sm sm:text-base block sm:inline">
-                            {item.quantidade} {item.categoria.toLowerCase()}
+                            {item.quantidade} {item.tipoMedida || 'unidades'}
                             {item.unidadesTotal && ` (${item.unidadesTotal} unidades)`}
                           </span>
                         </>

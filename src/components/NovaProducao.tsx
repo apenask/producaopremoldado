@@ -38,6 +38,7 @@ const NovaProducao: React.FC<NovaProducaoProps> = ({ onNavigate }) => {
   const [loading, setLoading] = useState(true);
   const [configuracaoProduto, setConfiguracaoProduto] = useState<any>(null);
   const [temConfiguracao, setTemConfiguracao] = useState(false);
+  const [tipoSelecionado, setTipoSelecionado] = useState<'tabuas' | 'formas' | 'unidades'>('unidades');
   
   const { alert, mostrarAlert, fecharAlert } = useAlert();
 
@@ -85,6 +86,18 @@ const NovaProducao: React.FC<NovaProducaoProps> = ({ onNavigate }) => {
     }
   }, [categoriaId]);
 
+  // Atualiza o tipo selecionado quando a categoria muda
+  useEffect(() => {
+    const categoria = getCategoriaAtual();
+    if (categoria) {
+      if (categoria.tipos.length === 1) {
+        setTipoSelecionado(categoria.tipos[0]);
+      } else if (!categoria.tipos.includes(tipoSelecionado)) {
+        setTipoSelecionado(categoria.tipos[0]);
+      }
+    }
+  }, [categoriaId]);
+
   const buscarProdutosAsync = async (termo: string) => {
     try {
       const filtrados = await buscarProdutos(termo);
@@ -126,13 +139,13 @@ const NovaProducao: React.FC<NovaProducaoProps> = ({ onNavigate }) => {
     const categoria = getCategoriaAtual();
     const qtd = parseInt(quantidade);
     
-    if (!categoria || !configuracaoProduto || isNaN(qtd)) return undefined;
+    if (!categoria || !configuracaoProduto || isNaN(qtd) || !categoria.tipos.includes(tipoSelecionado)) return undefined;
     
-    if (categoria.tipo === 'tabuas' && configuracaoProduto.unidadesPorTabua) {
+    if (tipoSelecionado === 'tabuas' && configuracaoProduto.unidadesPorTabua) {
       return qtd * configuracaoProduto.unidadesPorTabua;
-    } else if (categoria.tipo === 'formas' && configuracaoProduto.unidadesPorForma) {
+    } else if (tipoSelecionado === 'formas' && configuracaoProduto.unidadesPorForma) {
       return qtd * configuracaoProduto.unidadesPorForma;
-    } else if (categoria.tipo === 'unidades') {
+    } else if (tipoSelecionado === 'unidades') {
       return qtd;
     }
     
@@ -172,13 +185,13 @@ const NovaProducao: React.FC<NovaProducaoProps> = ({ onNavigate }) => {
 
     try {
       // Verifica se precisa de configuração
-      const unidadesTotal = await calcularUnidadesTotal(produtoTrimmed, qtd, categoria);
+      const unidadesTotal = await calcularUnidadesTotal(produtoTrimmed, qtd, categoria, tipoSelecionado);
       
-      if (categoria.tipo !== 'unidades' && unidadesTotal === undefined) {
+      if (tipoSelecionado !== 'unidades' && unidadesTotal === undefined) {
         mostrarAlert(
           'aviso', 
           'Configuração necessária', 
-          `Configure a quantidade por ${categoria.tipo === 'tabuas' ? 'tábua' : 'forma'} para este produto nas Configurações antes de adicionar.`
+          `Configure a quantidade por ${tipoSelecionado === 'tabuas' ? 'tábua' : 'forma'} para este produto nas Configurações antes de adicionar.`
         );
         return;
       }
@@ -188,7 +201,8 @@ const NovaProducao: React.FC<NovaProducaoProps> = ({ onNavigate }) => {
         produto: produtoTrimmed,
         quantidade: qtd,
         categoria: categoria.nome,
-        unidadesTotal
+        unidadesTotal,
+        tipoMedida: tipoSelecionado
       };
 
       setItens([...itens, novoItem]);
@@ -295,19 +309,25 @@ const NovaProducao: React.FC<NovaProducaoProps> = ({ onNavigate }) => {
   const getTextoQuantidade = (categoria: CategoriaProducao | undefined): string => {
     if (!categoria) return 'Quantidade';
     
-    switch (categoria.tipo) {
-      case 'tabuas': return 'Quantidade (tábuas)';
-      case 'formas': return 'Quantidade (formas)';
-      default: return 'Quantidade';
+    // Se a categoria suporta múltiplos tipos, mostra opções
+    if (categoria.tipos.length > 1) {
+      return 'Quantidade';
+    } else if (categoria.tipos.includes('tabuas')) {
+      return 'Quantidade (tábuas)';
+    } else if (categoria.tipos.includes('formas')) {
+      return 'Quantidade (formas)';
+    } else {
+      return 'Quantidade';
     }
   };
 
   const getTextoExibicao = (item: ItemProducao): string => {
     const categoria = categorias.find(c => c.nome === item.categoria);
+    const tipoItem = item.tipoMedida || 'unidades';
     
-    if (categoria?.tipo === 'tabuas') {
+    if (tipoItem === 'tabuas') {
       return `${item.quantidade} tábuas (${item.unidadesTotal} unidades)`;
-    } else if (categoria?.tipo === 'formas') {
+    } else if (tipoItem === 'formas') {
       return `${item.quantidade} formas (${item.unidadesTotal} unidades)`;
     } else {
       return `${item.quantidade} unidades`;
@@ -473,9 +493,34 @@ const NovaProducao: React.FC<NovaProducaoProps> = ({ onNavigate }) => {
               </select>
             </div>
 
+            {/* Seleção de tipo se a categoria suporta múltiplos tipos */}
+            {categoriaAtual && categoriaAtual.tipos.length > 1 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tipo de Medida
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {categoriaAtual.tipos.map((tipo) => (
+                    <button
+                      key={tipo}
+                      type="button"
+                      onClick={() => setTipoSelecionado(tipo)}
+                      className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                        tipoSelecionado === tipo
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {tipo === 'tabuas' ? 'Tábuas' : tipo === 'formas' ? 'Formas' : 'Unidades'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {getTextoQuantidade(categoriaAtual)}
+                Quantidade{categoriaAtual && categoriaAtual.tipos.length > 1 ? ` (${tipoSelecionado === 'tabuas' ? 'tábuas' : tipoSelecionado === 'formas' ? 'formas' : 'unidades'})` : ''}
               </label>
               <input
                 type="number"
@@ -498,16 +543,16 @@ const NovaProducao: React.FC<NovaProducaoProps> = ({ onNavigate }) => {
                         </p>
                         {configuracaoProduto && previewUnidades && (
                           <p className="text-xs text-green-600 mt-1">
-                            {quantidade && `${quantidade} ${categoriaAtual.tipo} = ${previewUnidades} unidades`}
+                            {quantidade && `${quantidade} ${tipoSelecionado} = ${previewUnidades} unidades`}
                           </p>
                         )}
                       </div>
                     </div>
-                  ) : categoriaAtual.tipo !== 'unidades' ? (
+                  ) : tipoSelecionado !== 'unidades' ? (
                     <div className="p-3 bg-orange-50 rounded-lg">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
                         <p className="text-xs sm:text-sm text-orange-700 font-medium">
-                          Configure a quantidade por {categoriaAtual.tipo === 'tabuas' ? 'tábua' : 'forma'} para este produto.
+                          Configure a quantidade por {tipoSelecionado === 'tabuas' ? 'tábua' : 'forma'} para este produto.
                         </p>
                         <button
                           onClick={() => onNavigate('configuracoes')}

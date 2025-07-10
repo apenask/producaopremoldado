@@ -250,7 +250,8 @@ export const getProducoes = async (): Promise<Record<string, ProducaoDiaria>> =>
         produto: item.produtos.nome,
         quantidade: item.quantidade,
         categoria: item.categorias_producao.nome,
-        unidadesTotal: item.unidades_total || undefined
+        unidadesTotal: item.unidades_total || undefined,
+        tipoMedida: 'unidades' // Por enquanto, até migrarmos o banco
       }))
     };
   }
@@ -321,12 +322,13 @@ export const removerProducao = async (data: string): Promise<void> => {
 export const calcularUnidadesTotal = async (
   produto: string, 
   quantidade: number, 
-  categoria: CategoriaProducao
+  categoria: CategoriaProducao,
+  tipoMedida: 'tabuas' | 'formas' | 'unidades' = 'unidades'
 ): Promise<number | undefined> => {
-  if (categoria.tipo === 'tabuas') {
+  if (tipoMedida === 'tabuas') {
     const unidadesPorTabua = await getUnidadesPorTabua(produto);
     return unidadesPorTabua ? quantidade * unidadesPorTabua : undefined;
-  } else if (categoria.tipo === 'formas') {
+  } else if (tipoMedida === 'formas') {
     const unidadesPorForma = await getUnidadesPorForma(produto);
     return unidadesPorForma ? quantidade * unidadesPorForma : undefined;
   }
@@ -345,9 +347,9 @@ export const temConfiguracaoForma = async (produto: string): Promise<boolean> =>
 
 // Nova função para verificar se produto tem configuração para o tipo de categoria
 export const temConfiguracaoParaCategoria = async (produto: string, categoria: CategoriaProducao): Promise<boolean> => {
-  if (categoria.tipo === 'tabuas') {
+  if (categoria.tipos.includes('tabuas')) {
     return await temConfiguracaoTabua(produto);
-  } else if (categoria.tipo === 'formas') {
+  } else if (categoria.tipos.includes('formas')) {
     return await temConfiguracaoForma(produto);
   }
   return true; // Para categoria 'unidades' sempre tem configuração

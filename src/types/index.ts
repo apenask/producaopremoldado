@@ -9,7 +9,7 @@ export interface ItemProducao {
   quantidade: number;
   categoria: string;
   unidadesTotal?: number;
-  multiplicador?: number;
+  tipoMedida?: 'tabuas' | 'formas' | 'unidades';
 }
 
 export interface ProducaoDiaria {
