@@ -820,7 +820,7 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
                         {produtoLote.produtoNovo && (
                           <div className="mt-1 p-2 bg-purple-50 rounded flex items-start space-x-1">
                             <AlertCircle className="h-3 w-3 text-purple-600 flex-shrink-0 mt-0.5" />
-                              Tipos: {getTiposTexto(categoria.tipos)}
+                            <p className="text-xs text-purple-700 font-medium">
                               Produto novo será criado
                             </p>
                           </div>
