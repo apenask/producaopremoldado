@@ -219,7 +219,7 @@ export const getProducoes = async (): Promise<Record<string, ProducaoDiaria>> =>
         quantidade: item.quantidade,
         categoria: item.categorias_producao.nome,
         unidadesTotal: item.unidades_total || undefined,
-        tipoMedida: 'unidades' // Por enquanto, até migrarmos o banco
+        tipoMedida: item.tipo_medida as 'tabuas' | 'formas' | 'unidades' // LINHA ALTERADA: Mapear tipo_medida do banco
       }))
     };
   }
@@ -271,7 +271,8 @@ export const salvarProducao = async (producao: ProducaoDiaria): Promise<void> =>
           produto_id: produto.id,
           categoria_id: categoria.id,
           quantidade: item.quantidade,
-          unidades_total: item.unidadesTotal || null
+          unidades_total: item.unidadesTotal || null,
+          tipo_medida: item.tipoMedida || 'unidades' // LINHA ALTERADA: Salvar o tipo de medida do item
         });
     }
   }
@@ -290,8 +291,8 @@ export const removerProducao = async (data: string): Promise<void> => {
 export const calcularUnidadesTotal = async (
   produto: string, 
   quantidade: number, 
-  categoria: CategoriaProducao,
-  tipoMedida: 'tabuas' | 'formas' | 'unidades' = 'unidades'
+  categoria: CategoriaProducao, // LINHA ALTERADA: Categoria ainda é usada, mas o tipo de medida vem do parâmetro
+  tipoMedida: 'tabuas' | 'formas' | 'unidades' = 'unidades' // LINHA ALTERADA: Adicionado tipoMedida como parâmetro
 ): Promise<number | undefined> => {
   if (tipoMedida === 'tabuas') {
     const unidadesPorTabua = await getUnidadesPorTabua(produto);
@@ -313,15 +314,16 @@ export const temConfiguracaoForma = async (produto: string): Promise<boolean> =>
   return unidades !== undefined && unidades > 0;
 };
 
-// Nova função para verificar se produto tem configuração para o tipo de categoria
-export const temConfiguracaoParaCategoria = async (produto: string, categoria: CategoriaProducao): Promise<boolean> => {
-  if (categoria.tipo === 'tabuas') {
+// INÍCIO DA ALTERAÇÃO: Função para verificar configuração com base no tipo de medida direto
+export const temConfiguracaoParaCategoria = async (produto: string, tipoMedida: 'tabuas' | 'formas' | 'unidades'): Promise<boolean> => {
+  if (tipoMedida === 'tabuas') {
     return await temConfiguracaoTabua(produto);
-  } else if (categoria.tipo === 'formas') {
+  } else if (tipoMedida === 'formas') {
     return await temConfiguracaoForma(produto);
   }
   return true; // Para categoria 'unidades' sempre tem configuração
 };
+// FIM DA ALTERAÇÃO
 
 // Utilitários de data
 export const formatarData = (data: Date): string => {

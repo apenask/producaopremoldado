@@ -11,8 +11,8 @@ import {
   getCategorias,
   salvarCategoria,
   removerCategoria,
-  getProdutosCategorias,
-  salvarProdutoCategoria
+  // getProdutosCategorias, // Removido, pois não está sendo usado no componente
+  // salvarProdutoCategoria // Removido, pois não está sendo usado no componente
 } from '../services/supabaseService';
 import AlertPersonalizado from './AlertPersonalizado';
 import { useAlert } from '../hooks/useAlert';
@@ -658,7 +658,7 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
               </div>
             </div>
           </>
-        ) : (
+        ) : ( // abaSelecionada === 'categorias'
           <>
             {/* Configuração de Categorias */}
             <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6">
@@ -669,7 +669,7 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
                 Crie novas categorias de produção para organizar melhor seus produtos.
               </p>
 
-              <div className="space-y-4">
+              <div className="space-y-4"> {/* INÍCIO DA ALTERAÇÃO: Este div agora envolve todos os campos e o botão */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Nome da Categoria
@@ -696,9 +696,8 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
                     <option value="tabuas">Tábuas</option>
                     <option value="formas">Formas</option>
                   </select>
-                  </div>
                 </div>
-
+                {/* LINHA ALTERADA: A div da descrição e o botão agora estão dentro do 'space-y-4' */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Descrição (opcional)
@@ -719,7 +718,7 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
                   <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                   <span>Adicionar Categoria</span>
                 </button>
-              </div>
+              </div> {/* FIM DA ALTERAÇÃO: Fechamento do div 'space-y-4' */}
             </div>
 
             {/* Lista de Categorias */}
