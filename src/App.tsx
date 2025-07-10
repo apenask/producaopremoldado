@@ -8,6 +8,7 @@ import NovaProducao from './components/NovaProducao';
 import Historico from './components/Historico';
 import Configuracoes from './components/Configuracoes';
 import Produtos from './components/Produtos';
+import Diaristas from './components/Diaristas'; // INÍCIO DA ALTERAÇÃO: Importar o componente Diaristas
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -52,6 +53,10 @@ function App() {
         return <Configuracoes onNavigate={navegar} />;
       case 'produtos':
         return <Produtos onNavigate={navegar} />;
+      // INÍCIO DA ALTERAÇÃO: Adicionar case para a tela de Diaristas
+      case 'diaristas':
+        return <Diaristas onNavigate={navegar} />;
+      // FIM DA ALTERAÇÃO
       default:
         return <Menu onNavigate={navegar} />;
     }

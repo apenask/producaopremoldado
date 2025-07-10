@@ -31,4 +31,22 @@ export interface CategoriaProducao {
   descricao: string;
 }
 
-export type TelaAtiva = 'menu' | 'nova-producao' | 'historico' | 'configuracoes' | 'produtos';
+export interface Diarista {
+  id: string;
+  nome: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ControleDiaria {
+  id: string;
+  diarista_id: string;
+  data: string;
+  status: 'presente' | 'falta' | 'meia_diaria';
+  created_at?: string;
+  updated_at?: string;
+}
+
+// INÍCIO DA ALTERAÇÃO: Adicionado 'diaristas' ao tipo TelaAtiva
+export type TelaAtiva = 'menu' | 'nova-producao' | 'historico' | 'configuracoes' | 'produtos' | 'diaristas';
+// FIM DA ALTERAÇÃO

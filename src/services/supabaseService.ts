@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { Database } from '../lib/database.types';
-import { ProducaoDiaria, ItemProducao, ConfiguracaoProduto, CategoriaProducao } from '../types';
+import { ProducaoDiaria, ItemProducao, ConfiguracaoProduto, CategoriaProducao, Diarista, ControleDiaria } from '../types'; // INÍCIO DA ALTERAÇÃO: Importar Diarista e ControleDiaria
 
 type Tables = Database['public']['Tables'];
 type ProdutoRow = Tables['produtos']['Row'];
@@ -8,6 +8,11 @@ type ConfiguracaoRow = Tables['configuracoes_produtos']['Row'];
 type CategoriaRow = Tables['categorias_producao']['Row'];
 type ProducaoRow = Tables['producoes_diarias']['Row'];
 type ItemRow = Tables['itens_producao']['Row'];
+// INÍCIO DA ALTERAÇÃO: Novos tipos para diaristas
+type DiaristaRow = Tables['diaristas']['Row'];
+type ControleDiariaRow = Tables['controle_diaristas']['Row'];
+// FIM DA ALTERAÇÃO: Novos tipos para diaristas
+
 
 // Produtos
 export const getProdutos = async (): Promise<string[]> => {
@@ -219,7 +224,7 @@ export const getProducoes = async (): Promise<Record<string, ProducaoDiaria>> =>
         quantidade: item.quantidade,
         categoria: item.categorias_producao.nome,
         unidadesTotal: item.unidades_total || undefined,
-        tipoMedida: item.tipo_medida as 'tabuas' | 'formas' | 'unidades' // LINHA ALTERADA: Mapear tipo_medida do banco
+        tipoMedida: item.tipo_medida as 'tabuas' | 'formas' | 'unidades'
       }))
     };
   }
@@ -272,7 +277,7 @@ export const salvarProducao = async (producao: ProducaoDiaria): Promise<void> =>
           categoria_id: categoria.id,
           quantidade: item.quantidade,
           unidades_total: item.unidadesTotal || null,
-          tipo_medida: item.tipoMedida || 'unidades' // LINHA ALTERADA: Salvar o tipo de medida do item
+          tipo_medida: item.tipoMedida || 'unidades'
         });
     }
   }
@@ -291,8 +296,8 @@ export const removerProducao = async (data: string): Promise<void> => {
 export const calcularUnidadesTotal = async (
   produto: string, 
   quantidade: number, 
-  categoria: CategoriaProducao, // LINHA ALTERADA: Categoria ainda é usada, mas o tipo de medida vem do parâmetro
-  tipoMedida: 'tabuas' | 'formas' | 'unidades' = 'unidades' // LINHA ALTERADA: Adicionado tipoMedida como parâmetro
+  categoria: CategoriaProducao,
+  tipoMedida: 'tabuas' | 'formas' | 'unidades' = 'unidades'
 ): Promise<number | undefined> => {
   if (tipoMedida === 'tabuas') {
     const unidadesPorTabua = await getUnidadesPorTabua(produto);
@@ -314,16 +319,131 @@ export const temConfiguracaoForma = async (produto: string): Promise<boolean> =>
   return unidades !== undefined && unidades > 0;
 };
 
-// INÍCIO DA ALTERAÇÃO: Função para verificar configuração com base no tipo de medida direto
 export const temConfiguracaoParaCategoria = async (produto: string, tipoMedida: 'tabuas' | 'formas' | 'unidades'): Promise<boolean> => {
   if (tipoMedida === 'tabuas') {
     return await temConfiguracaoTabua(produto);
   } else if (tipoMedida === 'formas') {
     return await temConfiguracaoForma(produto);
   }
-  return true; // Para categoria 'unidades' sempre tem configuração
+  return true;
 };
-// FIM DA ALTERAÇÃO
+
+// INÍCIO DA ALTERAÇÃO: Funções para controle de Diaristas
+
+// Diaristas
+export const getDiaristas = async (): Promise<Diarista[]> => {
+  const { data, error } = await supabase
+    .from('diaristas')
+    .select('*')
+    .order('nome');
+  
+  if (error) throw error;
+  return data.map(d => ({
+    id: d.id,
+    nome: d.nome,
+    created_at: d.created_at,
+    updated_at: d.updated_at
+  }));
+};
+
+export const addDiarista = async (nome: string): Promise<Diarista | null> => {
+  const { data, error } = await supabase
+    .from('diaristas')
+    .insert({ nome: nome.trim() })
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data ? {
+    id: data.id,
+    nome: data.nome,
+    created_at: data.created_at,
+    updated_at: data.updated_at
+  } : null;
+};
+
+export const updateDiarista = async (diarista: Diarista): Promise<Diarista | null> => {
+  const { data, error } = await supabase
+    .from('diaristas')
+    .update({ nome: diarista.nome.trim() })
+    .eq('id', diarista.id)
+    .select('*')
+    .single();
+  
+  if (error) throw error;
+  return data ? {
+    id: data.id,
+    nome: data.nome,
+    created_at: data.created_at,
+    updated_at: data.updated_at
+  } : null;
+};
+
+export const removeDiarista = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('diaristas')
+    .delete()
+    .eq('id', id);
+  
+  if (error) throw error;
+};
+
+// Controle de Diarias
+export const getControleDiariasByPeriod = async (startDate: string, endDate: string): Promise<ControleDiaria[]> => {
+  const { data, error } = await supabase
+    .from('controle_diaristas')
+    .select(`
+      *,
+      diaristas!inner(nome)
+    `)
+    .gte('data', startDate)
+    .lte('data', endDate)
+    .order('data', { ascending: true });
+
+  if (error) throw error;
+
+  return data.map(c => ({
+    id: c.id,
+    diarista_id: c.diarista_id,
+    data: c.data,
+    status: c.status as 'presente' | 'falta' | 'meia_diaria',
+    created_at: c.created_at,
+    updated_at: c.updated_at,
+    // @ts-ignore - diaristas.nome é injetado pelo select
+    diarista_nome: c.diaristas.nome 
+  }));
+};
+
+export const upsertControleDiaria = async (
+  diaristaId: string, 
+  data: string, 
+  status: 'presente' | 'falta' | 'meia_diaria'
+): Promise<ControleDiaria | null> => {
+  const { data: controleData, error } = await supabase
+    .from('controle_diaristas')
+    .upsert({
+      diarista_id: diaristaId,
+      data: data,
+      status: status
+    }, {
+      onConflict: 'diarista_id,data' // Conflito em diarista_id e data para atualização
+    })
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return controleData ? {
+    id: controleData.id,
+    diarista_id: controleData.diarista_id,
+    data: controleData.data,
+    status: controleData.status as 'presente' | 'falta' | 'meia_diaria',
+    created_at: controleData.created_at,
+    updated_at: controleData.updated_at
+  } : null;
+};
+
+// FIM DA ALTERAÇÃO: Funções para controle de Diaristas
+
 
 // Utilitários de data
 export const formatarData = (data: Date): string => {

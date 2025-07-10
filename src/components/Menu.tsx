@@ -1,5 +1,5 @@
 import React from 'react';
-import { Factory, History, Settings, Calendar, Package, LogOut } from 'lucide-react';
+import { Factory, History, Settings, Calendar, Package, LogOut, Users } from 'lucide-react'; // INÍCIO DA ALTERAÇÃO: Adicionado 'Users' para o ícone de diaristas
 import { TelaAtiva } from '../types';
 import { supabase } from '../lib/supabase';
 
@@ -49,6 +49,16 @@ const Menu: React.FC<MenuProps> = ({ onNavigate }) => {
             <History className="h-4 w-4 sm:h-5 sm:w-5" />
             <span>Histórico</span>
           </button>
+
+          {/* INÍCIO DA ALTERAÇÃO: Novo botão para Diaristas */}
+          <button
+            onClick={() => onNavigate('diaristas')}
+            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 sm:py-4 px-4 sm:px-6 rounded-xl font-semibold flex items-center justify-center space-x-3 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 text-sm sm:text-base"
+          >
+            <Users className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span>Diaristas</span>
+          </button>
+          {/* FIM DA ALTERAÇÃO */}
 
           <button
             onClick={() => onNavigate('produtos')}

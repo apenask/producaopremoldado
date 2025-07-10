@@ -128,6 +128,7 @@ export interface Database {
           quantidade: number
           unidades_total: number | null
           created_at: string
+          tipo_medida: 'tabuas' | 'formas' | 'unidades'
         }
         Insert: {
           id?: string
@@ -137,6 +138,7 @@ export interface Database {
           quantidade: number
           unidades_total?: number | null
           created_at?: string
+          tipo_medida?: 'tabuas' | 'formas' | 'unidades'
         }
         Update: {
           id?: string
@@ -146,6 +148,7 @@ export interface Database {
           quantidade?: number
           unidades_total?: number | null
           created_at?: string
+          tipo_medida?: 'tabuas' | 'formas' | 'unidades'
         }
         Relationships: [
           {
@@ -171,6 +174,64 @@ export interface Database {
           }
         ]
       }
+      // INÍCIO DA ALTERAÇÃO: Novas tabelas para controle de diaristas
+      diaristas: {
+        Row: {
+          id: string
+          nome: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nome: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          nome?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      controle_diaristas: {
+        Row: {
+          id: string
+          diarista_id: string
+          data: string
+          status: 'presente' | 'falta' | 'meia_diaria'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          diarista_id: string
+          data: string
+          status?: 'presente' | 'falta' | 'meia_diaria'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          diarista_id?: string
+          data?: string
+          status?: 'presente' | 'falta' | 'meia_diaria'
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "controle_diaristas_diarista_id_fkey"
+            columns: ["diarista_id"]
+            isOneToOne: false
+            referencedRelation: "diaristas"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      // FIM DA ALTERAÇÃO: Novas tabelas para controle de diaristas
     }
     Views: {
       [_ in never]: never
@@ -180,6 +241,9 @@ export interface Database {
     }
     Enums: {
       categoria_tipo: 'tabuas' | 'formas' | 'unidades'
+      // INÍCIO DA ALTERAÇÃO: Novo enum para status de diarista
+      diarista_status: 'presente' | 'falta' | 'meia_diaria'
+      // FIM DA ALTERAÇÃO: Novo enum para status de diarista
     }
     CompositeTypes: {
       [_ in never]: never
