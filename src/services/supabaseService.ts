@@ -187,38 +187,6 @@ export const removerCategoria = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
-// Configuração produto-categorias
-export const getProdutosCategorias = async (): Promise<Record<string, string[]>> => {
-  try {
-    // Por enquanto, vamos usar localStorage até implementarmos uma tabela específica
-    const dados = localStorage.getItem('produtos_categorias');
-    return dados ? JSON.parse(dados) : {};
-  } catch (error) {
-    console.error('Erro ao carregar produtos-categorias:', error);
-    return {};
-  }
-};
-
-export const salvarProdutoCategoria = async (produto: string, categoriaIds: string[]): Promise<void> => {
-  try {
-    const produtosCategorias = await getProdutosCategorias();
-    produtosCategorias[produto] = categoriaIds;
-    localStorage.setItem('produtos_categorias', JSON.stringify(produtosCategorias));
-  } catch (error) {
-    throw new Error('Erro ao salvar configuração produto-categoria');
-  }
-};
-
-export const getCategoriasProduto = async (produto: string): Promise<string[]> => {
-  const produtosCategorias = await getProdutosCategorias();
-  return produtosCategorias[produto] || [];
-};
-
-export const produtoPodeSerUsadoNaCategoria = async (produto: string, categoriaId: string): Promise<boolean> => {
-  const categoriasProduto = await getCategoriasProduto(produto);
-  return categoriasProduto.length === 0 || categoriasProduto.includes(categoriaId);
-};
-
 // Produções
 export const getProducoes = async (): Promise<Record<string, ProducaoDiaria>> => {
   const { data: producoes, error: producoesError } = await supabase
@@ -347,9 +315,9 @@ export const temConfiguracaoForma = async (produto: string): Promise<boolean> =>
 
 // Nova função para verificar se produto tem configuração para o tipo de categoria
 export const temConfiguracaoParaCategoria = async (produto: string, categoria: CategoriaProducao): Promise<boolean> => {
-  if (categoria.tipos.includes('tabuas')) {
+  if (categoria.tipo === 'tabuas') {
     return await temConfiguracaoTabua(produto);
-  } else if (categoria.tipos.includes('formas')) {
+  } else if (categoria.tipo === 'formas') {
     return await temConfiguracaoForma(produto);
   }
   return true; // Para categoria 'unidades' sempre tem configuração

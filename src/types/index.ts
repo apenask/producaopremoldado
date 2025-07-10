@@ -27,7 +27,7 @@ export interface ConfiguracaoProduto {
 export interface CategoriaProducao {
   id: string;
   nome: string;
-  tipos: ('tabuas' | 'formas' | 'unidades')[];
+  tipo: 'tabuas' | 'formas' | 'unidades';
   descricao: string;
 }
 
