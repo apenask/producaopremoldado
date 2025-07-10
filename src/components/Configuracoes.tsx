@@ -44,7 +44,7 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
   
   // Estados para categorias
   const [categorias, setCategorias] = useState<CategoriaProducao[]>([]);
-  const [novaCategoria, setNovaCategoria] = useState({ nome: '', tipo: 'unidades' as 'tabuas' | 'formas' | 'unidades', descricao: '' });
+  const [novaCategoria, setNovaCategoria] = useState({ nome: '', tipos: ['unidades'] as ('tabuas' | 'formas' | 'unidades')[], descricao: '' });
   const [editandoCategoria, setEditandoCategoria] = useState<string | null>(null);
   const [categoriaEditando, setCategoriaEditando] = useState<CategoriaProducao | null>(null);
   
@@ -344,18 +344,23 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
       return;
     }
 
+    if (novaCategoria.tipos.length === 0) {
+      mostrarAlert('aviso', 'Tipo obrigatório', 'Selecione pelo menos um tipo de medida.');
+      return;
+    }
+
     try {
       const categoria: CategoriaProducao = {
         id: Date.now().toString(),
         nome: novaCategoria.nome.trim(),
-        tipo: novaCategoria.tipo,
+        tipos: novaCategoria.tipos,
         descricao: novaCategoria.descricao.trim()
       };
 
       await salvarCategoria(categoria);
       const novasCategorias = await getCategorias();
       setCategorias(novasCategorias);
-      setNovaCategoria({ nome: '', tipo: 'unidades', descricao: '' });
+      setNovaCategoria({ nome: '', tipos: ['unidades'], descricao: '' });
       mostrarAlert('sucesso', 'Categoria adicionada', `Categoria "${categoria.nome}" foi adicionada com sucesso.`);
     } catch (error: any) {
       mostrarAlert('erro', 'Erro ao adicionar categoria', error.message);
@@ -412,6 +417,29 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
     }
   };
 
+  const getTiposTexto = (tipos: string[]) => {
+    return tipos.map(tipo => getTipoTexto(tipo)).join(', ');
+  };
+
+  const toggleTipoNovaCategoria = (tipo: 'tabuas' | 'formas' | 'unidades') => {
+    setNovaCategoria(prev => ({
+      ...prev,
+      tipos: prev.tipos.includes(tipo) 
+        ? prev.tipos.filter(t => t !== tipo)
+        : [...prev.tipos, tipo]
+    }));
+  };
+
+  const toggleTipoCategoriaEditando = (tipo: 'tabuas' | 'formas' | 'unidades') => {
+    if (!categoriaEditando) return;
+    
+    setCategoriaEditando(prev => prev ? {
+      ...prev,
+      tipos: prev.tipos.includes(tipo) 
+        ? prev.tipos.filter(t => t !== tipo)
+        : [...prev.tipos, tipo]
+    } : null);
+  };
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 flex items-center justify-center">
@@ -692,7 +720,7 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
                         <div className="flex-1">
                           <span className="font-medium text-gray-800">{categoria.nome}</span>
                           <p className="text-sm text-gray-600">
-                            Tipo: {getTipoTexto(categoria.tipo)}
+                            Tipos: {getTiposTexto(categoria.tipos)}
                             {categoria.descricao && ` • ${categoria.descricao}`}
                           </p>
                         </div>
@@ -737,7 +765,7 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
                               key={categoriaId}
                               className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
                             >
-                              {categoria.nome} ({getTipoTexto(categoria.tipo)})
+                              {categoria.nome} ({getTiposTexto(categoria.tipos)})
                             </span>
                           ) : null;
                         })}
@@ -792,7 +820,7 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
                         {produtoLote.produtoNovo && (
                           <div className="mt-1 p-2 bg-purple-50 rounded flex items-start space-x-1">
                             <AlertCircle className="h-3 w-3 text-purple-600 flex-shrink-0 mt-0.5" />
-                            <p className="text-xs text-purple-700 font-medium">
+                              Tipos: {getTiposTexto(categoria.tipos)}
                               Produto novo será criado
                             </p>
                           </div>
@@ -891,17 +919,35 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tipo de Medida
+                    Tipos de Medida (pode selecionar múltiplos)
                   </label>
-                  <select
-                    value={novaCategoria.tipo}
-                    onChange={(e) => setNovaCategoria({ ...novaCategoria, tipo: e.target.value as 'tabuas' | 'formas' | 'unidades' })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
-                  >
-                    <option value="unidades">Unidades</option>
-                    <option value="tabuas">Tábuas</option>
-                    <option value="formas">Formas</option>
-                  </select>
+                  <div className="space-y-2">
+                    {(['unidades', 'tabuas', 'formas'] as const).map((tipo) => (
+                      <label
+                        key={tipo}
+                        className="flex items-center p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={novaCategoria.tipos.includes(tipo)}
+                          onChange={() => toggleTipoNovaCategoria(tipo)}
+                          className="sr-only"
+                        />
+                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center mr-3 transition-colors ${
+                          novaCategoria.tipos.includes(tipo)
+                            ? 'bg-purple-600 border-purple-600'
+                            : 'border-gray-300'
+                        }`}>
+                          {novaCategoria.tipos.includes(tipo) && (
+                            <Check className="h-2.5 w-2.5 text-white" />
+                          )}
+                        </div>
+                        <span className="text-sm font-medium text-gray-700">
+                          {getTipoTexto(tipo)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
 
                 <div>
@@ -947,15 +993,34 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ onNavigate }) => {
                           onChange={(e) => setCategoriaEditando(prev => prev ? { ...prev, nome: e.target.value } : null)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
                         />
-                        <select
-                          value={categoriaEditando?.tipo || 'unidades'}
-                          onChange={(e) => setCategoriaEditando(prev => prev ? { ...prev, tipo: e.target.value as 'tabuas' | 'formas' | 'unidades' } : null)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                        >
-                          <option value="unidades">Unidades</option>
-                          <option value="tabuas">Tábuas</option>
-                          <option value="formas">Formas</option>
-                        </select>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">Tipos de Medida</label>
+                          {(['unidades', 'tabuas', 'formas'] as const).map((tipo) => (
+                            <label
+                              key={tipo}
+                              className="flex items-center p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={categoriaEditando?.tipos.includes(tipo) || false}
+                                onChange={() => toggleTipoCategoriaEditando(tipo)}
+                                className="sr-only"
+                              />
+                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center mr-3 transition-colors ${
+                                categoriaEditando?.tipos.includes(tipo)
+                                  ? 'bg-purple-600 border-purple-600'
+                                  : 'border-gray-300'
+                              }`}>
+                                {categoriaEditando?.tipos.includes(tipo) && (
+                                  <Check className="h-2.5 w-2.5 text-white" />
+                                )}
+                              </div>
+                              <span className="text-sm font-medium text-gray-700">
+                                {getTipoTexto(tipo)}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
                         <input
                           type="text"
                           value={categoriaEditando?.descricao || ''}
